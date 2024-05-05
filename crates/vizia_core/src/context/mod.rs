@@ -69,6 +69,9 @@ thread_local! {
     pub static MAPS: RefCell<HashMap<MapId, (Entity, Box<dyn Any>)>> = RefCell::new(HashMap::new());
     /// The 'current' entity which is used for storing lens map mapping functions as per above.
     pub static CURRENT: RefCell<Entity> = RefCell::new(Entity::root());
+    // HACK: Quick hack to avoid race conditions when two GUI instances are open on the same thread.
+    //       If `MAPS` is global, then `ENTITY_MANAGER` needs to be too.
+    pub static ENTITY_MANAGER: RefCell<IdManager<Entity>> = RefCell::new(IdManager::new());
 }
 
 #[derive(Default, Clone)]
@@ -87,7 +90,6 @@ pub struct WindowState {
 
 /// The main storage and control object for a Vizia application.
 pub struct Context {
-    pub(crate) entity_manager: IdManager<Entity>,
     pub(crate) entity_identifiers: HashMap<String, Entity>,
     pub tree: Tree<Entity>,
     pub(crate) current: Entity,
@@ -152,7 +154,6 @@ impl Context {
         cache.add(Entity::root());
 
         let mut result = Self {
-            entity_manager: IdManager::new(),
             entity_identifiers: HashMap::new(),
             tree: Tree::new(),
             current: Entity::root(),
@@ -237,7 +238,7 @@ impl Context {
         // Build the environment model at the root.
         Environment::new(&mut result).build(&mut result);
 
-        result.entity_manager.create();
+        ENTITY_MANAGER.with_borrow_mut(|f| f.create());
 
         result.style.role.insert(Entity::root(), Role::Window);
 
@@ -278,7 +279,7 @@ impl Context {
 
     /// Mark the application as needing to rerun the draw method
     pub fn needs_redraw(&mut self, entity: Entity) {
-        if self.entity_manager.is_alive(entity) {
+        if ENTITY_MANAGER.with_borrow(|f| f.is_alive(entity)) {
             // If a child window needs redrawing, add itself to the redraw list.
             // This ensures that the entire window is redrawn: https://github.com/vizia/vizia/issues/580
             let window = if self.tree.is_window(entity) {
@@ -546,7 +547,7 @@ impl Context {
             self.views.remove(entity);
             self.text_context.text_bounds.remove(*entity);
             self.text_context.text_paragraphs.remove(*entity);
-            self.entity_manager.destroy(*entity);
+            ENTITY_MANAGER.with(|f| f.borrow_mut().destroy(*entity));
         }
     }
 

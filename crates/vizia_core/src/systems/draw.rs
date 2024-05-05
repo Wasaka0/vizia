@@ -1,3 +1,4 @@
+use crate::context::ENTITY_MANAGER;
 use crate::{cache::CachedData, prelude::*};
 use morphorm::Node;
 use skia_safe::{ClipOp, ImageFilter, Paint, Rect, SamplingOptions, Surface, canvas::SaveLayerRec};
@@ -16,7 +17,7 @@ pub(crate) fn draw_system(
         return false;
     }
 
-    if !cx.entity_manager.is_alive(window_entity) {
+    if !ENTITY_MANAGER.with_borrow(|f| f.is_alive(window_entity)) {
         return false;
     }
 

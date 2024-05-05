@@ -13,6 +13,7 @@
 //! ```
 
 use crate::accessibility::IntoNode;
+use crate::context::{AccessNode, ENTITY_MANAGER};
 use crate::prelude::*;
 use crate::systems::get_access_node;
 use std::any::{Any, TypeId};
@@ -114,7 +115,7 @@ pub trait View: 'static + Sized {
     where
         F: FnOnce(&mut Context),
     {
-        let id = cx.entity_manager.create();
+        let id = ENTITY_MANAGER.with_borrow_mut(|f| f.create());
         let current = cx.current();
         cx.tree.add(id, current).expect("Failed to add to tree");
         cx.cache.add(id);

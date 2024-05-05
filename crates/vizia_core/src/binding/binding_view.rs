@@ -2,7 +2,7 @@ use hashbrown::{HashMap, HashSet};
 use std::any::TypeId;
 
 use crate::binding::{BasicStore, Store, StoreId};
-use crate::context::{CURRENT, MAP_MANAGER, MAPS};
+use crate::context::{CURRENT, ENTITY_MANAGER, MAP_MANAGER, MAPS};
 use crate::model::ModelOrView;
 use crate::prelude::*;
 
@@ -43,7 +43,7 @@ where
     where
         F: 'static + Fn(&mut Context, L),
     {
-        let id = cx.entity_manager.create();
+        let id = ENTITY_MANAGER.with_borrow_mut(|f| f.create());
         let current = cx.current();
         cx.tree.add(id, current).expect("Failed to add to tree");
         cx.cache.add(id);
